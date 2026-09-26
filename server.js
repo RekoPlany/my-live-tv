@@ -4,6 +4,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
+    // ئەگەر داوای m3u8 یان لاپەڕەی سەرەکی کرا
     if (url.pathname.endsWith('.m3u8') || url.pathname === '/') {
       return generateM3U8();
     }
@@ -33,25 +34,22 @@ function generateM3U8() {
   }
 
   const currentEp = episodes[currentEpisodeIndex];
-  const remainingDuration = currentEp.duration - timeIntoCurrentEpisode;
 
-  let m3u8Content = `#EXTM3U
+  // دروستکردنی مانێفێستی ستانداری HLS
+  const m3u8Content = `#EXTM3U
 #EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:${totalDuration}
+#EXT-X-TARGETDURATION:${currentEp.duration}
 #EXT-X-MEDIA-SEQUENCE:${Math.floor(now / 10)}
-#EXT-X-DISCONTINUITY
-#EXTINF:${remainingDuration},${currentEp.title}
+#EXTINF:${currentEp.duration},${currentEp.title}
 ${currentEp.url}
+#EXT-X-ENDLIST
 `;
-
-  const nextEpIndex = (currentEpisodeIndex + 1) % episodes.length;
-  const nextEp = episodes[nextEpIndex];
-  m3u8Content += `#EXT-X-DISCONTINUITY\n#EXTINF:${nextEp.duration},${nextEp.title}\n${nextEp.url}\n`;
 
   return new Response(m3u8Content, {
     headers: {
-      'Content-Type': 'application/vnd.apple.mpegurl',
+      'Content-Type': 'application/x-mpegURL',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     }
   });
