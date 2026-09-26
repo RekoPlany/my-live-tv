@@ -1,4 +1,4 @@
-import episodes from './videos.json' assert { type: 'json' };
+import episodes from './videos.json';
 
 export default {
   async fetch(request) {
