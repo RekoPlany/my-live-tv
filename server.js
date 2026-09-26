@@ -4,7 +4,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // 1. ڕێگەپێدانی CORS بۆ هەموو ئامێر و پلەیەرەکان
+    // 1. پشتیوانی CORS بۆ هەموو پلەیەرەکان
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -16,47 +16,38 @@ export default {
     }
 
     if (!episodes || episodes.length === 0) {
-      return new Response('No videos in videos.json', { status: 500 });
+      return new Response('No episodes configured', { status: 500 });
     }
 
-    // 2. دیاریکردنی درێژی سێگمێنتەکان (10 چڕکەیی بۆ لایڤی هاوسەنگ)
-    const SEGMENT_DURATION = 10;
-    
-    // کاتی ڕاستەقینەی جیهانی (UNIX Timestamp)
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    // هەژمارکردنی تەواوی کاتی پێڕستی ڤیدیۆکان
+    // 2. هەژمارکردنی کاتی جیهانی 24/7 (Global Time Sync)
     const totalDuration = episodes.reduce((acc, ep) => acc + (ep.duration || 300), 0);
-    if (totalDuration === 0) return new Response('Invalid video durations', { status: 500 });
+    const now = Math.floor(Date.now() / 1000);
+    const currentLoopTime = now % totalDuration;
 
-    // کاتی ئێستای زنجیرە لۆپەکە (24/7 Timeline)
-    const loopTime = nowSec % totalDuration;
-
-    // دیاریکردنی کاتی ئێستای ڤیدیۆ لە سەر خەتی کات
-    let accumulated = 0;
+    let accumulatedTime = 0;
     let currentEpisode = episodes[0];
-    let timeInEpisode = 0;
+    let timeIntoEpisode = 0;
 
     for (const ep of episodes) {
       const dur = ep.duration || 300;
-      if (accumulated + dur > loopTime) {
+      if (accumulatedTime + dur > currentLoopTime) {
         currentEpisode = ep;
-        timeInEpisode = loopTime - accumulated;
+        timeIntoEpisode = currentLoopTime - accumulatedTime;
         break;
       }
-      accumulated += dur;
+      accumulatedTime += dur;
     }
 
     const streamUrl = currentEpisode.url.trim();
 
-    // 3. ئەگەر لینکەکە خۆی .m3u8 بێت
+    // 3. ئەگەر لینکەکە HLS / m3u8 بوو
     if (streamUrl.includes('.m3u8') || streamUrl.includes('/hls/')) {
       try {
-        const res = await fetch(streamUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+        const response = await fetch(streamUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
         });
-        const manifest = await res.text();
-        return new Response(manifest, {
+        const content = await response.text();
+        return new Response(content, {
           headers: {
             'Content-Type': 'application/vnd.apple.mpegurl',
             'Access-Control-Allow-Origin': '*',
@@ -68,29 +59,23 @@ export default {
       }
     }
 
-    // 4. دابەشکردنی لایڤی زەمەنی (Virtual Live Sliding Window)
-    // ئەم هەژمارکردنە وادەکات لای هەموو جیهان تەنها 3-4 سێگمێنتی کۆتایی دەربکەوێت وەک کەناڵی ئاسمانی
-    const mediaSequence = Math.floor(nowSec / SEGMENT_DURATION);
-    const episodeDuration = currentEpisode.duration || 300;
-
-    // دروستکردنی مانێفێست بە ڕێکخستنی کاتی ڕاستەقینەی ISO
-    const programDateTime = new Date(nowSec * 1000).toISOString();
+    // 4. دروستکردنی HLS Manifest ی ستاندارد و هاوکات لەگەڵ کات (Live Timeline)
+    const duration = currentEpisode.duration || 300;
+    const mediaSequence = Math.floor(now / 10);
+    const startTime = timeIntoEpisode.toFixed(1);
 
     const m3u8Content = `#EXTM3U
-#EXT-X-VERSION:6
-#EXT-X-TARGETDURATION:${SEGMENT_DURATION}
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:${duration}
 #EXT-X-MEDIA-SEQUENCE:${mediaSequence}
-#EXT-X-DISCONTINUITY-SEQUENCE:${Math.floor(mediaSequence / 100)}
-#EXT-X-PROGRAM-DATE-TIME:${programDateTime}
-
-#EXT-X-DISCONTINUITY
-#EXTINF:${SEGMENT_DURATION}.0,
-${streamUrl}#t=${timeInEpisode.toFixed(1)}
+#EXT-X-START:TIME-OFFSET=${startTime},PRECISE=YES
+#EXTINF:${duration},${currentEpisode.title || 'Live Stream'}
+${streamUrl}
 `;
 
     return new Response(m3u8Content, {
       headers: {
-        'Content-Type': 'application/x-mpegURL',
+        'Content-Type': 'application/vnd.apple.mpegurl',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
