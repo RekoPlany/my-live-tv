@@ -1,12 +1,7 @@
 [
   {
-    "title": "Big Buck Bunny Test",
+    "title": "My Custom Stream 1",
     "url": "http://familyuae.net:8080/movie/e8:aa:cb:9a:cd:3b/29351785943449/939179.mp4",
-    "duration": 596
-  },
-  {
-    "title": "Elephant Dream Test",
-    "url": "http://familyuae.net:8080/movie/e8:aa:cb:9a:cd:3b/29351785943449/939179.mp4",
-    "duration": 653
+    "duration": 1800
   }
 ]
