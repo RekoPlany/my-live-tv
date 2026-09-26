@@ -1,7 +1,12 @@
 [
   {
-    "title": "Episode 1",
-    "url": "https://lh3.googleusercontent.com/d/1IcmScUBhF7aKyWqxWCIar_451oNXmmBX",
-    "duration": 2400
+    "title": "Big Buck Bunny Test",
+    "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "duration": 596
+  },
+  {
+    "title": "Elephant Dream Test",
+    "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    "duration": 653
   }
 ]
