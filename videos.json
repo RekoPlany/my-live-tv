@@ -1,4 +1,17 @@
 [
-  { "title": "Ep 1", "url": "https://site.com/drama/ep1.mp4", "duration": 2700 },
-  { "title": "Ep 2", "url": "https://site.com/drama/ep2.mp4", "duration": 2700 }
+  {
+    "title": "Episode 1",
+    "url": "https://archive.org/serve/tomandjerry_1080p/S1940E01%20-%20Puss%20Gets%20The%20Boot%20(1080p%20BluRay%20x265%20Ghost).mp4",
+    "duration": 2400
+  },
+  {
+    "title": "Episode 2",
+    "url": "https://archive.org/serve/tomandjerry_1080p/S1940E01%20-%20Puss%20Gets%20The%20Boot%20%281080p%20BluRay%20x265%20Ghost%29.mp4",
+    "duration": 2400
+  },
+  {
+    "title": "Episode 3",
+    "url": "https://archive.org/serve/tomandjerry_1080p/S1941E03%20-%20The%20Night%20Before%20Christmas%20(1080p%20BluRay%20x265%20Ghost).mp4",
+    "duration": 2400
+  }
 ]
