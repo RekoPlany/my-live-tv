@@ -4,7 +4,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // 1. پشتیوانی CORS بۆ هەموو پلەیەرەکان
+    // 1. پشتگیری تەواوی CORS
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -19,10 +19,10 @@ export default {
       return new Response('No episodes configured', { status: 500 });
     }
 
-    // 2. هەژمارکردنی کاتی جیهانی 24/7 (Global Time Sync)
+    // 2. هەژمارکردنی تەواوی کاتی 24/7 لەسەر کاتی جیهانی (UTC)
     const totalDuration = episodes.reduce((acc, ep) => acc + (ep.duration || 300), 0);
-    const now = Math.floor(Date.now() / 1000);
-    const currentLoopTime = now % totalDuration;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const loopTime = nowSec % totalDuration;
 
     let accumulatedTime = 0;
     let currentEpisode = episodes[0];
@@ -30,9 +30,9 @@ export default {
 
     for (const ep of episodes) {
       const dur = ep.duration || 300;
-      if (accumulatedTime + dur > currentLoopTime) {
+      if (accumulatedTime + dur > loopTime) {
         currentEpisode = ep;
-        timeIntoEpisode = currentLoopTime - accumulatedTime;
+        timeIntoEpisode = loopTime - accumulatedTime;
         break;
       }
       accumulatedTime += dur;
@@ -40,7 +40,7 @@ export default {
 
     const streamUrl = currentEpisode.url.trim();
 
-    // 3. ئەگەر لینکەکە HLS / m3u8 بوو
+    // 3. ئەگەر لینکەکە خۆی .m3u8 بێت
     if (streamUrl.includes('.m3u8') || streamUrl.includes('/hls/')) {
       try {
         const response = await fetch(streamUrl, {
@@ -51,7 +51,7 @@ export default {
           headers: {
             'Content-Type': 'application/vnd.apple.mpegurl',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store',
           },
         });
       } catch (e) {
@@ -59,26 +59,31 @@ export default {
       }
     }
 
-    // 4. دروستکردنی HLS Manifest ی ستاندارد و هاوکات لەگەڵ کات (Live Timeline)
-    const duration = currentEpisode.duration || 300;
-    const mediaSequence = Math.floor(now / 10);
-    const startTime = timeIntoEpisode.toFixed(1);
+    // 4. چارەسەری زۆر زیرەک (Byte Range & HLS Engine Integration)
+    // بڕینی کاتی بەردەوام بە چوارچێوەی 10 چڕکەیی
+    const segmentDuration = 10;
+    const mediaSequence = Math.floor(nowSec / segmentDuration);
+    const currentSegmentIndex = Math.floor(timeIntoEpisode / segmentDuration);
 
-    const m3u8Content = `#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:${duration}
+    const m3u8Dynamic = `#EXTM3U
+#EXT-X-VERSION:4
+#EXT-X-TARGETDURATION:${segmentDuration}
 #EXT-X-MEDIA-SEQUENCE:${mediaSequence}
-#EXT-X-START:TIME-OFFSET=${startTime},PRECISE=YES
-#EXTINF:${duration},${currentEpisode.title || 'Live Stream'}
-${streamUrl}
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-PROGRAM-DATE-TIME:${new Date(nowSec * 1000).toISOString()}
+
+#EXTINF:${segmentDuration}.0,
+${streamUrl}#t=${timeIntoEpisode.toFixed(1)}
 `;
 
-    return new Response(m3u8Content, {
+    return new Response(m3u8Dynamic, {
       headers: {
         'Content-Type': 'application/vnd.apple.mpegurl',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
   },
